@@ -1,0 +1,6 @@
+define service{
+        use                             standard-service
+        host_name                       {{ ansible_hostname }}
+        service_description             Mysql Status
+        check_command                   check_nrpe_ssl!check_mysql!
+        }

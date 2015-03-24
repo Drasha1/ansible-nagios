@@ -1,0 +1,7 @@
+define service{
+        use                             standard-service         
+        host_name                       {{ ansible_hostname }}
+        service_description             Current Load
+        check_command                   check_nrpe_ssl!check_load!5.0,4.0,3.0!10.0,6.0,4.0
+        }
+

@@ -1,0 +1,85 @@
+#Nagios server configuration
+#Author: Tyler Monahan
+#Date: 3/10/2015
+#Version: 1
+Nagios
+
+  Overview
+    Nagios monitoring and alert server that watches services. ansible setups a central nagios server based on the nagios group in your host file.
+        Then any thing you run this role against will have nrpe install on it and the correct config files added to the nagios server
+
+  Requirements
+    nagios,nagios-plugins-all,nagios-devel,nagios-plugins-nrpe
+        epel repository
+        centos 5,6,7
+        
+  Required Ansible Variables
+        htaccessuser=nagiosadmin                     || user for login to nagios via htaccess (only need for server in nagios group)
+    htaccesspass=pickabetterpasswordthenthis     || password used for that user (only need for server in nagios group)
+    nagiosemail=test@gmail.com                   || email to send notifications to (only need for server in nagios group)
+        
+  files
+    /etc/nagios/                  || configuration diretory for nagios
+    /etc/nagios/hosts             || nagios config files. to disable a monitor must be moved out of the hosts folder.
+    /etc/nagios/cgi.cfg           || config that controls htaccess users access level
+    /usr/lib64/nagios/plugins/    || plugins directory. you can manualy test plugins by running them from here
+    /etc/nagios/objects/commands.cfg || contains System User Check which is set by what hostgroup the server is in.
+    /etc/nagios/hosts/commands.cfg   || The different commands the services run to check server status
+    /etc/nagios/hosts/contacts.cfg   || List of people to email about issues specifically for hosts
+    /etc/nagios/hosts/groups.cfg     || The groups hosts are grouped into. cosmetic mostly but has to be set correctly or every thing breaks
+    /etc/nagios/hosts/templates.cfg  || default templates used in the hosts folder
+
+  Ports
+    tcp in/out on port 5666 for nrpe traffic
+    tcp in/out on port 25 for mail alerts
+    tcp in/out on port 80 for http
+
+  Resources
+    http://nagios.sourceforge.net/docs/nagioscore/3/en || nagios documentation
+    https://bugzilla.redhat.com/show_bug.cgi?id=469530 || nagios plugin permission issue with older centos appers fixed on 7
+
+
+  Basic Tasks
+    nagios -v /etc/nagios/nagios.cfg || verify config is working before trying a restart/reload
+    service nagios reload            || reload the config file after changes
+    /usr/lib64/nagios/plugins/check_nrpe -H 85.17.189.145 || test check_nrpe for issues from the nagios server to a server having issues
+    Strange plugin issue
+      Test the nrpe connection from the nagios server.
+      if nrpe works ssh into the machine and try running the command listed in /etc/nagios/nrpe.cfg for the failing monitor
+    Remove service from nagios
+      Generally you will want to make a disabled folder in /etc/nagios/ and move the servers folder inside hosts to the disabled folder then reload nagios
+      If you just want to stop alerts you can disable/mark them from the nagios web panel instead which is better if you are not deleting the server
+      Files in the servers folder can just be renamed to have the .disable extension and then reload nagios
+
+  Potential Issues
+    Email
+      emails from this server are filtered into spam in gmail. You can add the mail server as a contact to get them any ways
+    Interworx
+      due to package conflicts you can't install nagios-plugins-mailq so a special check has to be run when setting up nrpe to install a small group of packages. Because of this you shouldn't set up any mail monitors for interworx.
+          you can ignore this if you don't have Interworx installed as it should run with out issue in that case
+
+  Monitor Services
+    Smart Check: due to the way the package is handled the file has to be set to root executable so the nrpe user can run it. It is also only setup on servers where it can be run with out errors during setup. https://bugzilla.redhat.com/show_bug.cgi?id=469530
+    Http, ftp, imap, pop, smtp: these are only setup by ansible if the servers are in the http, ftp, or mail group.
+    Imap, pop, smtp: can't be setup on interworx. see interworx section
+
+Nrpe
+  files
+    /etc/nagios/nrpe.cfg || config file
+    /var/log/messages    || nrpe log entries
+
+  Overview
+    interfaces with the nagios server to run local plugins on the system
+
+  Ports
+    tcp in/out port 5666 for nrpe traffic
+
+  Requirements
+    nrpe, nagios-plugins-all, openssl, nagios-plugins-nrpe
+
+  Basic Tasks
+    copy plugin commands out of /etc/nagios/nrpe.cfg and run them from the cli to test an issue
+
+  Notes
+    All commands that could be run are also listed under COMMAND DEFINITIONS and are required for nrpe to work
+

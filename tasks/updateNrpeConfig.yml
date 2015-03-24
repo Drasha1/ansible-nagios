@@ -1,0 +1,15 @@
+---
+#create mysql plugin path variable. required to prevent conflics between 32bit and 64 bit systems
+- name: nagios plugins path
+  shell: find /usr/lib*/ -type d -name nagios 
+  register: nagios_plugins
+
+- name: set better path
+  set_fact: nagios_plugins_path="{{ nagios_plugins.stdout }}/plugins/"
+
+- name: nrpe.config
+  template: src=nrpe.cfg dest=/etc/nagios/nrpe.cfg
+
+- name: restart nrpe
+  service: name=nrpe state=restarted
+

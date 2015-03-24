@@ -1,0 +1,4 @@
+---
+# set home directory for nagios. over ride if the location is unique
+nagios_home: /etc/nagios
+working_dir: "{{ nagios_home }}/hosts"

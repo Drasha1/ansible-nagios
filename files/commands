@@ -1,0 +1,79 @@
+define command {
+ command_name    check_ssh_load
+ command_line    $USER1$/check_by_ssh -H $HOSTADDRESS$ -C "/home/nagios/bin/check_load -w $ARG1$ -c $ARG2$"
+}
+
+# 'check_load' command definition
+define command{
+        command_name    check_load
+        command_line    $USER1$/check_load -w $ARG1$ -c $ARG2$
+        }
+
+# 'check_disk' command definition
+define command{
+        command_name    check_disk
+        command_line    $USER1$/check_disk -w $ARG1$ -c $ARG2$ -p $ARG3$
+        }
+
+# 'check_swap' command definition
+define command{
+        command_name    check_swap
+        command_line    $USER1$/check_swap -w $ARG1$ -c $ARG2$
+        }
+
+define command{
+command_name check_nrpe_ssl
+command_line $USER1$/check_nrpe -H $HOSTADDRESS$ -c $ARG1$ -t 30
+}
+
+# configured for clouds. the device needs to be changed for physical machines. doesn't work for clouds
+#define command{
+#        command_name    check_ide_smart
+#        command_line    $USER1$/check_ide_smart -d /dev/vda -n
+#        }
+
+# mysql status
+define command{
+        command_name    check_mysql
+        command_line    $USER1$/check_mysql -u nrpe -p "lzEneD9FdPVxw6tk6a"
+        }
+
+# 'check_ping' command definition
+define command{
+        command_name    ping_ip
+        command_line    $USER1$/check_ping -H $ARG1$ -w $ARG2$ -c $ARG3$ -p 5
+        }
+
+# Check to make sure dns servers are working
+define command{
+        command_name check_dns
+        command_line $USER1$/check_dns -H www.google.com -w 3 -c 30
+        }
+
+# Check mail queue
+define command{
+        command_name check_mailq
+        command_line $USER1$/check_mailq -w $ARG1$ -c $ARG2$
+        }
+
+# 'check_ssh' command definition
+define command{
+        command_name    check_sshd
+        command_line    $USER1$/check_ssh 127.0.0.1
+        }
+
+# check file age is not older then 2 - 5 days
+define command{
+        command_name    check_file_age
+        command_line    $USER1$/check_file_age -w 172800 -c 432000 -f /var/log/backup.log
+        }
+
+# check file age is not older then 2 - 5 days
+define command{
+        command_name    check_vent_backup_log
+        command_line    $USER1$/check_log -F /var/log/backup.log -O /tmp/vent_backup_old_log -q error
+# was causing issues with newer versions of nagios
+#max_check_attempts              1 
+#is_volatile                     1
+        }
+

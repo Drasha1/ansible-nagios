@@ -1,0 +1,6 @@
+define service{
+        use                             standard-service         
+        host_name                       {{ ansible_hostname }}
+        service_description             imap
+        check_command                   check_imap
+        }

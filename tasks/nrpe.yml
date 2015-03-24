@@ -1,0 +1,61 @@
+---
+#need to have a different install if using interworx
+- name: check for iworx
+  command: rpm -q interworx
+  register: iworxCheck
+  ignore_errors: True
+
+- name: install nrpe normal
+  yum: name={{ item }} state=latest
+  with_items:
+    - nrpe
+    - nagios-plugins-all
+    - openssl
+  when: iworxCheck.rc == 1
+
+#more specific package list for servers with iworx installed. This is to prevent dependency conflicts with interworx custom packages.
+- name: install nrpe iworx
+  yum: name={{ item }} state=latest
+  with_items:
+    - nrpe
+    - openssl
+    - nagios-plugins-http
+#   - nagios-plugins-icmp  plugin conflicts with iworx package
+    - nagios-plugins-disk
+    - nagios-plugins-nagios
+#   - nagios-plugins-mailq  plugin conflicts with iworx package
+    - nagios-plugins-mysql
+    - nagios-plugins-load
+    - nagios-plugins-by_ssh
+    - nagios-plugins-swap
+    - nagios-plugins-dig
+#   - nagios-plugins-smtp  plugin conflicts with iworx package
+    - nagios-plugins-ide_smart
+    - nagios-plugins-dns
+    - nagios-plugins-ssh
+    - nagios-plugins-ups
+    - nagios-plugins-snmp
+    - nagios-plugins-ping
+    - nagios-plugins-nrpe
+  when: iworxCheck.rc == 0
+
+- name: set run level for nrpe
+  command: chkconfig --levels 345 nrpe on
+
+#create mysql plugin path variable. required to prevent conflics between 32bit and 64 bit systems
+- name: nagios plugins path
+  shell: find /usr/lib*/ -type d -name nagios 
+  register: nagios_plugins
+
+- name: set better path
+  set_fact: nagios_plugins_path="{{ nagios_plugins.stdout }}/plugins/"
+
+- name: nrpe.config
+  template: src=nrpe.cfg dest=/etc/nagios/nrpe.cfg
+
+- name: restart nrpe
+  service: name=nrpe state=restarted
+
+- name: monitor
+  include: createMonitors.yml dir_hostname="{{ ansible_fqdn }}"
+

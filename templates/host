@@ -1,0 +1,13 @@
+define host{
+use standard-host
+host_name {{ ansible_hostname }}
+alias {{ ansible_hostname }}
+address {{ ansible_default_ipv4.address }}
+max_check_attempts 4
+check_period 24x7
+notification_period 24x7
+check_command check-host-alive
+hostgroups {% for group in group_names %} {{ group }}, {% endfor %}
+
+}
+

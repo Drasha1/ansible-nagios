@@ -1,0 +1,31 @@
+---
+# python-passlib is needed for the htpasswd ansible module. nagios-plugins-nrpe needs to be specifically installed otherwise it casues issues in some cases
+- name: install nagios
+  yum: name=nagios,nagios-plugins-all,nagios-devel,nagios-plugins-nrpe,python-passlib state=latest
+
+- name: setup folders
+  file: path={{ item }} state=directory
+  with_items:
+   - "{{ nagios_home }}"
+   - "{{ nagios_home }}/hosts"
+   - "{{ nagios_home }}/objects"
+   - "/var/www/htpasswd/"
+
+#this only supports a single user at the moment. Need to update to support lists here and in the template cgi.cfg
+- name: setup password
+  htpasswd: path=/var/www/htpasswd/users mode=644 name={{ htaccessuser }} password={{ htaccesspass }}
+
+- name: configure http
+  copy: src=http.nagios.conf dest=/etc/httpd/conf.d/nagios.conf
+
+- name: reload http
+  service: name=httpd state=reloaded 
+
+- name: add config file
+  copy: src=commands dest="{{ working_dir }}/commands.cfg"
+- copy: src=customtemplates dest="{{ working_dir }}/templates.cfg"
+- template: src=cgi.cfg dest="{{ nagios_home }}/cgi.cfg"
+- copy: src=nagios.cfg dest="{{ nagios_home }}/nagios.cfg"
+- copy: src=templates.cfg dest="{{ nagios_home }}/objects/templates.cfg"
+- template: src=contacts.cfg dest="{{ nagios_home  }}/objects/contacts.cfg"
+- copy: src=timeperiods.cfg dest="{{ nagios_home  }}/objects/timeperiods.cfg" 

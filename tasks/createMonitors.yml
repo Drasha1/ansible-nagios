@@ -1,0 +1,127 @@
+---
+###
+# this file is run for a specific server and creates the needed monitor files for it.
+# {{ working_dir }} is set when this file is included and goes to the ansible root directory + includes the servers host name for the folder
+# any monitor file commands must be also set in the nrpe.conf file if you are adding any
+
+# makes a folder in /etc/nagios or where ever the nagios working path is set to using the servers hostname
+# loops through all the servers in the group nagios and creates the folders for the host files there. 
+
+- name: set the working directory to be the systems hostname
+  set_fact: working_dir="{{ working_dir }}/{{ dir_hostname }}"
+
+- name: create folder for host
+  file: path="{{ working_dir }}/" state=directory
+  delegate_to: "{{ item }}"
+  with_items: groups.nagios
+
+# adds templates to the host file directory created above and uses template files from roles/nagios/files/ which are configured to grab server information
+- name: setup general monitor files
+  template: src={{ item[0] }} dest="{{ working_dir }}/{{ item[0] }}.cfg" mode=0644
+  delegate_to: "{{ item[1] }}"
+  with_nested:
+    - [ 'host', 'ping', 'load', 'swap', 'ssh', 'diskusage', 'dns' ]
+    - groups.nagios
+
+#create mysql plugin path variable. required to prevent conflics between 32bit and 64 bit systems
+- name: nagios plugins path
+  shell: find /usr/lib*/ -type d -name nagios 
+  register: nagios_plugins
+
+- name: set better path
+  set_fact: nagios_plugins_path="{{ nagios_plugins.stdout }}/plugins/"
+
+
+# Checks to see if mysql is installed on the server. if it is then a monitor file is created for it and a nrpe mysql user is created
+- name: check for mysql
+  command: rpm -q mysql-server
+  register: mysqlCheck
+  # ignore errors has to be set to true because rpm -q returns a linux error code of 1 which ansible interprates as a faliure even though it is expected
+  ignore_errors: True
+
+- name: create mysql montior
+  template: src=mysql dest="{{ working_dir }}/mysql.cfg" mode=0644
+  delegate_to: "{{ item }}"
+  with_items: groups.nagios
+  when: mysqlCheck.rc == 0
+
+- name: double check required python module
+  yum: name=MySQL-python state=latest
+  when: mysqlCheck.rc == 0
+
+- name: create nrpe mysql user
+  mysql_user: name=nrpe host={{ item }} password=lzEneD9FdPVxw6tk6a
+  with_items:
+    - "{{ ansible_hostname }}"
+    - 127.0.0.1
+    - ::1
+    - localhost
+  when: mysqlCheck.rc == 0
+
+# to many false postatives with the grep method need a better way to handle this
+# Checks to see if the server is listening on the mail port 25 and if so sets up a monitor to check the mail server
+#- name: check for mail server
+#  command: netstat -lnp | grep ':25'
+#  register: mailCheck
+
+- name: setup mail server monitor files
+  template: src={{ item[0] }} dest="{{ working_dir }}/{{ item[0] }}.cfg" mode=0644
+  delegate_to: "{{ item[1] }}"
+  with_nested:
+    - [ 'mailq', 'smtp', 'imap', 'pop']
+    - groups.nagios
+  when: "'mail' in group_names"
+
+# to many false postatives with the grep method need a better way to handle this
+#check for ftp server 
+#- name: check for ftp server
+#  command: netstat -lnp | grep ':21'
+#  register: ftpCheck
+
+- name: create ftp montior
+  template: src=ftp dest="{{ working_dir }}/ftp.cfg" mode=0644
+  delegate_to: "{{ item }}"
+  with_items: groups.nagios
+  when: "'ftp' in group_names"
+
+# to many false postatives with the grep method need a better way to handle this
+#check http
+#- name: check for http
+#  command: netstat -lnp | grep ':80'
+#  register: httpCheck
+
+- name: create http montitor
+  template: src=http dest="{{ working_dir }}/http.cfg" mode=0644
+  delegate_to: "{{ item }}"
+  with_items: groups.nagios
+  when: "'http' in group_names"
+
+
+# Test to see if the smart monitor plugin works on the server and sets it up if it does
+- name: check smart status
+  command: "{{ nagios_plugins_path }}check_ide_smart -d /dev/sda -n"
+  register: smartCheck
+  ignore_errors: True
+
+- name: create smart monitor
+  template: src=smart dest="{{ working_dir }}/smart.cfg" mode=0644
+  delegate_to: "{{ item }}"
+  with_items: groups.nagios
+  when: smartCheck.stdout.find('OK - Operational') != -1
+
+# file group needs to be set to nrpe so it can be run and you need the suid set so it runs as root. bug report about this issue. https://bugzilla.redhat.com/show_bug.cgi?id=469530
+- name: fix file permissions
+  file: path="{{ nagios_plugins_path }}check_ide_smart" mode=4750 group=nrpe
+  when: smartCheck.stdout.find('OK - Operational') != -1
+
+# create a groups file
+# name: create groups
+# template: src=groups dest="{{ nagios_home }}/objects/groups.cfg" mode=0644
+# delegate_to: "{{ item }}"
+# with_items: groups.nagios
+
+# restarts all the nagios servers so changes are applied
+- name: reload nagios
+  service: name=nagios state=reloaded
+  delegate_to: "{{ item }}"
+  with_items: groups.nagios

@@ -1,0 +1,6 @@
+define service{
+        use                             standard-service         
+        host_name                       {{ ansible_hostname }}
+        service_description             Swap Usage
+        check_command                   check_nrpe_ssl!check_swap!20!10
+        }

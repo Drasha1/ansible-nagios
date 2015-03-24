@@ -1,0 +1,7 @@
+---
+- name: mail monitor
+  template: src={{ item[0] }} dest="{{ working_dir }}/{{ item[0] }}.cfg"
+  delegate_to: "{{ item[1] }}"
+  with_nested:
+    - [ 'mailq', 'smtp', 'imap', 'pop']
+    - groups.nagios
