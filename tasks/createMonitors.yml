@@ -115,7 +115,7 @@
   when: smartCheck.stdout.find('OK - Operational') != -1
 
 # create a groups file
-  name: create groups
+- name: create groups
   template: src=groups dest="{{ nagios_home }}/objects/groups.cfg" mode=0644
   delegate_to: "{{ item }}"
   with_items: groups.nagios
