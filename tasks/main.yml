@@ -1,7 +1,7 @@
 ---
 - name: setup nagios server if included in the nagios group
-  include: role/nagios/task/nagios.yml
+  include: nagios.yml
   when: "'nagios' in group_names"
 
 - name: now setup monitor for the server
-  include: role/nagios/task/nrpe.yml
+  include: nrpe.yml
